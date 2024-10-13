@@ -1,0 +1,434 @@
+// Program Name
+// Written by Aditya Kumar (5590435),
+// on 8/7
+// Program Description: A recreation of the popular japanese game 
+// 'Sokoban', in which the player aims to push boxes into a storage space 
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+
+//Defines
+#define ROWS 10
+#define COLS 10
+#define MAX_CELL 9
+#define QUIT 'q'
+// Every tile on the board corresponds to one of these;
+enum base { 
+    NONE,
+    WALL,
+    STORAGE
+};
+// Helper to count the box on storage's and my box's
+struct counter {
+    int box_on_storage;
+    int box;
+};
+// Every tile on the board must corresopnd to one of these tiles.
+struct tile {
+    enum base base;
+    int box;
+};
+// Takes care of everything regarding the player (movement, counting the moves)
+struct player {
+    int row;
+    int col;
+    int counter;
+};
+
+// Function Prototypes
+void init_board(struct tile board[ROWS][COLS]);
+void print_line(void);
+void print_title(void);
+void print_board(struct tile board[ROWS][COLS], int player_row, int player_col);
+void wall_location(struct tile board[ROWS][COLS], int row, int col);
+void storage_location(struct tile board[ROWS][COLS], int row, int col);
+void box_location(struct tile board[ROWS][COLS], int row, int col);
+void line_walls_location(struct tile board[ROWS][COLS], int start_row,
+     int start_col, int end_row, int end_col);
+int out_of_bounds(int row, int col);
+struct player player_position(struct tile board[ROWS][COLS], 
+struct player player);
+struct player player_movement(char direction, struct player player, 
+struct tile board[ROWS][COLS]);
+int win_condition(struct counter counter);
+
+
+
+
+int main(void) {
+    //declare all my variables
+    int row;
+    int col;
+    int start_row = 0;
+    int start_col = 0;
+    int end_row = 0;
+    int end_col = 0;
+    char command;
+    struct tile board[ROWS][COLS];
+    init_board(board);
+    struct player player;
+    struct counter counter;
+    counter.box = 0;
+    counter.box_on_storage = 0;
+    
+    printf("=== Level Setup ===\n");    
+    while (scanf(" %c", &command) != EOF && command != QUIT) {
+        
+        if (command == 'W') {
+            line_walls_location(board, start_row, start_col, end_row, end_col);
+        }
+        else {
+            scanf(" %d %d", &row, &col);
+            if (out_of_bounds(row, col)) {
+                printf("Location out of bounds\n");
+                print_board(board, -1, -1);
+                continue;
+            } else if (command == 'w') {
+                wall_location(board, row, col);
+            } else if  (command == 's') {
+                storage_location(board, row, col);
+            } else if (command == 'b') {
+                box_location(board, row, col);
+                counter.box++;           
+            } 
+        }              
+        print_board(board, -1, -1);        
+    }
+
+    player.row = 0; 
+    player.col = 0;
+    player.counter = 0;
+    
+    printf("Enter player starting position: ");
+    player = player_position(board, player);
+
+    char direction;
+    while (scanf(" %c", &direction) != EOF) {
+        player = player_movement(direction, player, board);
+        print_board(board, player.row, player.col);    
+    
+        if (win_condition(counter) == 0) {
+            if (player.counter == 1) {
+                printf("=== Level Solved in %d Move! ===\n", player.counter);
+            } else {
+                printf("=== Level Solved in %d Moves! ===\n", player.counter);
+            } 
+
+            exit(0);
+        }
+    }  
+    return 0;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// YOUR FUNCTIONS //////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// TODO: Your function implementations go here
+
+
+int win_condition(struct counter counter) {
+    if (counter.box_on_storage == counter.box) {
+        return 1;
+    } else return 0;
+}
+
+// scans in the direction, moves it that way with row/col ++/--, adds counter,
+// checks if outta bounds and then puts on other side
+// if in front of player/on other side of board is a wall, moves back and lower 
+// Apologies for bad readability, goodbye marks
+struct player player_movement(char direction, struct player player, 
+struct tile board[ROWS][COLS]) {
+    if (direction == 'w') {
+        player.row--;
+        player.counter++;
+        if (player.row < 0) {
+            if (board[ROWS - 1][player.col].base == WALL) {
+                player.row++; player.counter--;
+            } else {
+                player.row = ROWS - 1; 
+                player.counter++;
+            }
+        } else if (board[player.row][player.col].base == WALL) {
+            player.row++; player.counter--;
+        }
+    } else if (direction == 's') {
+        player.row++;player.counter++;
+        if (player.row > ROWS - 1) {
+            if (board[0][player.col].base == WALL) {
+                player.row--; player.counter--;
+            } else {
+                player.row = 0; player.counter++;
+            }
+        } else if (board[player.row][player.col].base == WALL) {
+            player.row--; player.counter--;
+        } 
+    } else if (direction == 'a') {
+        player.col--;player.counter++;
+        if (player.col < 0) {
+            if (board[player.row][COLS - 1].base == WALL) {
+                player.col++; player.counter--;
+            } else {
+                player.col = COLS - 1; player.counter++;
+            }
+        } else if (board[player.row][player.col].base == WALL) {
+            player.col++; player.counter--;
+        }
+    } else if (direction == 'd') {
+        player.col++; player.counter++;
+        if (player.col > COLS - 1) {
+            if (board[player.row][0].base == WALL) {
+                player.col--; player.counter--;
+            } else {
+                player.col = 0; player.counter++;
+            }
+        } else if (board[player.row][player.col].base == WALL) {
+            player.col--; player.counter--;
+        } 
+    } else if (direction == 'c') {
+        printf("Number of moves so far: %d \n", player.counter);
+    } 
+
+    if (board[player.row][player.col].box) {
+        board[player.row][player.col].box = 0;
+        if (direction == 'w') {
+            if (player.row-1 < 0) {
+                if (board[ROWS - 1][player.col].base == WALL) {
+                    player.row++;
+                    board[player.row - 1][player.col].box = 1;
+                }
+                else {
+                    board[ROWS - 1][player.col].box = 1;
+                }
+            }
+            else {
+                if (board[player.row - 1][player.col].base != WALL) {
+                    board[player.row - 1][player.col].box = 1;
+                } else {
+                    player.row++;
+                    board[player.row - 1][player.col].box = 1;
+                }
+            }
+        } else if (direction == 'a') {
+            if (player.col - 1 < 0) {
+                if (board[player.row][COLS - 1].base == WALL) {
+                    player.col++;
+                    board[player.row][player.col - 1].box = 1;
+                }
+                else {
+                    board[player.row][COLS - 1].box = 1;
+                }
+            }
+            else {
+                if (board[player.row][player.col - 1].base != WALL) {
+                    board[player.row][player.col - 1].box = 1;
+                }
+                else {
+                    player.col++;
+                    board[player.row][player.col - 1].box = 1;
+                }
+            }
+        } else if (direction == 's') {
+            if (player.row + 1 > ROWS - 1) {
+                
+                if (board[ROWS - 1][player.col].base == WALL) {
+                    player.row--;
+                    board[player.row + 1][player.col].box = 1;
+                }
+                else {                
+                    board[0][player.col].box = 1;
+                }
+            }
+            else {
+                if (board[player.row + 1][player.col].base != WALL) {
+                    board[player.row + 1][player.col].box = 1;
+                }
+                else {
+                    player.row--;
+                    board[player.row + 1][player.col].box = 1;
+                }
+            }
+        } else if (direction == 'd' ) {
+            if (player.col + 1 > COLS - 1) {
+                if (board[player.row][COLS - 1].base == WALL) {
+                    player.col--;
+                    board[player.row][player.col + 1].box = 1;
+                }
+                else {
+                    board[player.row][0].box = 1;
+                }
+            } else {
+                if (board[player.row][player.col + 1].base != WALL) {
+                    board[player.row][player.col + 1].box = 1;
+                } else {
+                    player.col--;
+                    board[player.row][player.col + 1].box = 1;
+                }
+            } 
+        }
+
+    } return player;
+
+}
+
+struct player player_position(struct tile board[ROWS][COLS],
+struct player player) {
+    while (scanf(" %d %d", &player.row, &player.col) != EOF) {
+    
+        if (out_of_bounds(player.row, player.col) ||
+     board[player.row][player.col].box ||
+     board[player.row][player.col].base == WALL) {
+            printf("Position (%d, %d) is invalid", player.row, player.col);
+            printf("\nEnter player starting position: ");
+            //legit every invalid case ^^, if this triggers, loop loops around
+        } else {
+            printf("\n=== Starting Sokoban! ===\n");
+            print_board(board, player.row, player.col);
+            break;
+        }
+    }
+    return player;
+}
+
+void wall_location(struct tile board[ROWS][COLS], int row, int col) {
+    if (board[row][col].box == 1) {
+        board[row][col].box = 0;
+        //0 equals false according to struct(tile)
+    } board[row][col].base = WALL;
+}
+
+void line_walls_location(struct tile board[ROWS][COLS], int start_row,
+     int start_col, int end_row, int end_col) {
+    scanf(" %d %d %d %d", &start_row, &start_col, &end_row, &end_col);   
+    // scan different to the later one coz this has to scan in 4 digits not 2
+    if (out_of_bounds(start_row, start_col) && out_of_bounds(end_row,
+        end_col)) {
+        printf("Location out of bounds\n");
+    }
+    //For the horizonal lines, 
+    else if (start_row == end_row) {
+        for(int col = start_col;
+        col <= end_col;
+        col++) {
+            if (!out_of_bounds(start_row, col)) {
+                wall_location(board, start_row, col);
+            } 
+        }
+
+    } else if (start_col == end_col) {
+        for (int row = start_row;
+        row <= end_row;
+        row++) {
+            if (!out_of_bounds(start_col, row)) {
+                wall_location(board, row, start_col);
+            } 
+            //essentially same as above, just swapped for vertical
+        } 
+    }
+}
+
+
+void storage_location(struct tile board[ROWS][COLS], int row, int col) {
+    board[row][col].base = STORAGE;
+}
+
+void box_location(struct tile board[ROWS][COLS], int row, int col) {
+    if (board[row][col].base == WALL) {
+        board[row][col].base = NONE;
+        //changes the thingo base
+    }
+    board[row][col].box = 1;
+    //1 = true coz of struct(tile) = 0
+}
+
+int out_of_bounds(int row, int col) {
+    return (row < 0 || row > ROWS - 1 || col < 0 || 
+    col > COLS - 1);
+
+    //honestly I probably didn't need to make a max/min but it looks cleaner
+}
+
+
+
+
+
+
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// PROVIDED FUNCTIONS //////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+// initialises the board to default values.
+void init_board(struct tile board[ROWS][COLS]) {
+    for (int i = 0; i < ROWS; i++) {
+        for (int j = 0; j < COLS; j++) {
+            board[i][j].base = NONE;
+            board[i][j].box = 0;
+        }
+    }
+}
+
+// Helper function for print_board().
+// Prints a line the width of the sokoban board.
+void print_line(void) {
+    for (int i = 0; i < COLS * 4 + 1; i++) {
+        printf("-");
+        
+    }
+    printf("\n");
+}
+
+// Helper function for print_board().
+// Prints out the title for above the sokoban board.
+void print_title(void) {
+    print_line();
+    char *title = "S O K O B A N";
+    int len = COLS * 4 + 1;
+    int n_white = len - strlen(title) - 2;
+    printf("|");
+    for (int i = 0; i < n_white / 2; i++) {
+        printf(" ");
+    }
+    printf("%s", title);
+    for (int i = 0; i < (n_white + 1) / 2; i++) {
+        printf(" ");
+    }
+    printf("|\n");
+}
+
+// Prints out the current state of the sokoban board.
+// It will place the player on the board at position player_row, player_col.
+// If player position is out of bounds, it won't place a player anywhere.
+void print_board(
+    struct tile board[ROWS][COLS], int player_row, int player_col) {
+    print_title();
+    for (int i = 0; i < ROWS; i++) {
+        print_line();
+        for (int j = 0; j < COLS; j++) {
+            printf("|");
+
+            struct tile curr = board[i][j];
+            if (i == player_row && j == player_col) {
+                printf("^_^");
+            } else if (curr.base == WALL) {
+                printf("===");
+            } else if (curr.box && curr.base == STORAGE) {
+                printf("[o]");
+            } else if (curr.box) {
+                printf("[ ]");
+            } else if (curr.base == STORAGE) {
+                printf(" o ");
+            } else {
+                printf("   ");
+            }
+        }
+        printf("|\n");
+    }
+    print_line();
+    printf("\n");
+}
